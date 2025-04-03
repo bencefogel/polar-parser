@@ -4,30 +4,69 @@ import glob
 import pandas as pd
 from pathlib import Path
 from datetime import datetime, timedelta
+import zipfile
+
 
 
 class TrainingParser:
-    def __init__(self, folder_pattern: str = "polar-user-data-export*"):
-        """Initialize the parser and find matching files."""
+    def __init__(self,folder_of_zip_files:str|None = None, folder_pattern: str = "polar-user-data-export*"):
+        """Initialize the parser and find matching files.
+        Args:
+            folder_of_zip_files (str|None): Path to the folder containing zip files. If None, it will look in the current directory. Default is None. 
+            folder_pattern (str): Pattern to match folders or zip files.
+        """
+        if folder_of_zip_files is not None:
+            self.directory = Path(folder_of_zip_files)
+        else:
+            self.directory = Path.cwd()
+        if not self.directory.exists():
+            raise FileNotFoundError(f"The folder '{self.directory}' does not exist.")
+        if not self.directory.is_dir():
+            raise NotADirectoryError(f"The path '{self.directory}' is not a directory.")
+        
         self.folder_pattern = folder_pattern
-        self.files = self.list_training_filenames()
+        self.training_JSON_files = []
         self.training_summary = pd.DataFrame()
         self.training_hr_samples = []
+        self.training_hr_df = pd.DataFrame()
+        self.process_all_files()
 
-    def list_training_filenames(self) -> list:
+
+    def process_all_files(self) -> list:
         """Finds all training session JSON files in the first matching folder."""
-        matching_folders = glob.glob(self.folder_pattern)
+        matching_folders = [str(folder) for folder in self.directory.glob(self.folder_pattern)]
         if not matching_folders:
-            print("No matching folders found.")
+            print("No matching folders or zip files found at:", self.folder_pattern)
             return []
+        for folder in matching_folders:
+            print(f"Found folder: {folder}")
+            folder_path = Path(folder)
+            with zipfile.ZipFile(folder_path, 'r') as zip_ref:
+                for filemember in zip_ref.namelist():
+                    if filemember.startswith("training-session") and filemember.endswith(".json"):
+                        print(f"Found training session JSON file: {filemember}")
+                        # append name to list
+                        self.training_JSON_files.append(filemember)
+                        # load json file
+                        with zip_ref.open(filemember) as file:
+                            # Read the JSON content, get exercises
+                            # print(f"Reading JSON file: {filemember}")
+                            content = json.load(file)
+                            exercises = content.get("exercises", {})
+                            # parse exercise summary
+                            self.parse_exercise_summary(exercises)
+                            # parse heart rate samples
+                            self.parse_hr_samples(exercises)
+                        
+
         folder_path = Path(matching_folders[0])  # Use the first matching folder, should be updated to handle multiple folders!!!
         return [f for f in folder_path.glob("training-session*.json")]
 
-    def read_exercises(self, file_path: Path) -> dict:
-        """Reads a JSON file and returns its content."""
-        with open(file_path, "r") as f:
-            data = json.load(f)
-        return data.get("exercises", {})
+    # def read_exercises(self, file_path: Path) -> dict:
+    #     """Reads a JSON file and returns its content."""
+    #     with open(file_path, "r") as f:
+    #         data = json.load(f)
+    #     return data.get("exercises", {})
 
     def parse_exercise_summary(self, exercises: list):
         """Parses exercise summary and appends to the DataFrame."""
@@ -63,15 +102,21 @@ class TrainingParser:
                     hr_samples.append({"dateTime": sample_time, "heartRate": sample["value"]})
             except (KeyError) as e:
                 print(f"Missing heart rate value for timepoint {sample['dateTime']}")
-        return pd.DataFrame(hr_samples)
+        hr_df = pd.DataFrame(hr_samples)
+        if not hr_df.empty:
+            self.training_hr_samples.append(hr_df)
+            self.training_hr_df = pd.concat([self.training_hr_df, hr_df], ignore_index=True)
 
-    def process_all_files(self):
-        """Processes all training session files and updates DataFrames."""
-        for file in self.files:
-            exercises = self.read_exercises(file)
+        # return pd.DataFrame(hr_samples)
 
-            self.parse_exercise_summary(exercises)
-            hr_df = self.parse_hr_samples(exercises)
-            if not hr_df.empty:
-                self.training_hr_samples.append(hr_df)  # Append each file's heart rate data separately
+    # def process_all_files(self):
+    #     """Processes all training session files and updates DataFrames."""
+    #     for file in self.training_JSON_files:
+    #         exercises = self.read_exercises(file)
+
+    #         self.parse_exercise_summary(exercises)
+
+    #         hr_df = self.parse_hr_samples(exercises)
+    #         if not hr_df.empty:
+    #             self.training_hr_samples.append(hr_df)  # Append each file's heart rate data separately
 

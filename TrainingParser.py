@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 import isodate
 import glob
@@ -9,7 +11,7 @@ import zipfile
 
 
 class TrainingParser:
-    def __init__(self,folder_of_zip_files:str|None = None, folder_pattern: str = "polar-user-data-export*"):
+    def __init__(self, folder_of_zip_files:str|None = None, folder_pattern: str = "polar-user-data-export*"):
         """Initialize the parser and find matching files.
         Args:
             folder_of_zip_files (str|None): Path to the folder containing zip files. If None, it will look in the current directory. Default is None. 
@@ -43,6 +45,15 @@ class TrainingParser:
             folder_path = Path(folder)
             with zipfile.ZipFile(folder_path, 'r') as zip_ref:
                 for filemember in zip_ref.namelist():
+                    if filemember.startswith('account-data') and filemember.endswith('.json'):
+                        print(f"Found account data JSON file: {filemember}")
+                        # load json file
+                        with zip_ref.open(filemember) as file:
+                            # Read the JSON content, get exercises
+                            # print(f"Reading JSON file: {filemember}")
+                            content = json.load(file)
+                            username = content.get("username", {})
+
                     if filemember.startswith("training-session") and filemember.endswith(".json"):
                         print(f"Found training session JSON file: {filemember}")
                         # append name to list

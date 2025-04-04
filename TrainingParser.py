@@ -53,7 +53,8 @@ class TrainingParser:
                             # print(f"Reading JSON file: {filemember}")
                             content = json.load(file)
                             username = content.get("username", {})
-
+                            break
+                for filemember in zip_ref.namelist():
                     if filemember.startswith("training-session") and filemember.endswith(".json"):
                         print(f"Found training session JSON file: {filemember}")
                         # append name to list
@@ -65,9 +66,9 @@ class TrainingParser:
                             content = json.load(file)
                             exercises = content.get("exercises", {})
                             # parse exercise summary
-                            self.parse_exercise_summary(exercises)
+                            self.parse_exercise_summary(exercises, username)
                             # parse heart rate samples
-                            self.parse_hr_samples(exercises)
+                            self.parse_hr_samples(exercises, username)
                         
 
         folder_path = Path(matching_folders[0])  # Use the first matching folder, should be updated to handle multiple folders!!!
@@ -79,7 +80,7 @@ class TrainingParser:
     #         data = json.load(f)
     #     return data.get("exercises", {})
 
-    def parse_exercise_summary(self, exercises: list):
+    def parse_exercise_summary(self, exercises: list, username:str):
         """Parses exercise summary and appends to the DataFrame."""
         exercise_list = []
         for ex in exercises:
@@ -89,6 +90,7 @@ class TrainingParser:
                 duration = isodate.parse_duration(ex.get("duration", "PT0S")).total_seconds()
 
                 exercise_list.append({
+                    "username": username,
                     "start": start,
                     "stop": stop,
                     "duration_sec": duration,
@@ -103,14 +105,14 @@ class TrainingParser:
         self.training_summary = pd.concat([self.training_summary, pd.DataFrame(exercise_list)], ignore_index=True)
 
 
-    def parse_hr_samples(self, exercises: list) -> pd.DataFrame:
+    def parse_hr_samples(self, exercises: list, username: str) -> pd.DataFrame:
         """Parses heart rate samples and returns a DataFrame."""
         hr_samples = []
         for ex in exercises:
             try:
                 for sample in ex.get("samples", {}).get("heartRate", []):
                     sample_time = datetime.fromisoformat(sample["dateTime"]) + timedelta(minutes=ex.get("timezoneOffset", 0))
-                    hr_samples.append({"dateTime": sample_time, "heartRate": sample["value"]})
+                    hr_samples.append({"username": username, "dateTime": sample_time, "heartRate": sample["value"]})
             except (KeyError) as e:
                 print(f"Missing heart rate value for timepoint {sample['dateTime']}")
         hr_df = pd.DataFrame(hr_samples)

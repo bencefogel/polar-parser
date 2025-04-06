@@ -20,6 +20,7 @@ class ActivityParser:
         self.activity_summary = pd.DataFrame()
         self.step_series_df = pd.DataFrame()
         self.hr_247_df = pd.DataFrame()
+        self.username = None
 
         self.process_all_files()
 
@@ -33,11 +34,23 @@ class ActivityParser:
         for zip_path in matching_zips:
             with zipfile.ZipFile(zip_path, 'r') as zip_ref:
                 for filemember in zip_ref.namelist():
+                    if filemember.startswith('account-data') and filemember.endswith('.json'):
+                        # print(f"Found account data JSON file: {filemember}")
+                        # load json file
+                        with zip_ref.open(filemember) as file:
+                            content = json.load(file)
+                            self.username = content.get("username", {})
+                            break
+                for filemember in zip_ref.namelist():
                     if filemember.startswith("activity-") and filemember.endswith(".json"):
+                        print(f"Found activity JSON file: {filemember}")
+                        # load json file
                         with zip_ref.open(filemember) as file:
                             data = json.load(file)
                             self.parse_activity_file(data)
                     elif filemember.startswith("247ohr_") and filemember.endswith(".json"):
+                        print(f"Found 24/7 HR JSON file: {filemember}")
+                        # load json file
                         with zip_ref.open(filemember) as file:
                             data = json.load(file)
                             self.parse_247ohr_file(data)
@@ -50,6 +63,7 @@ class ActivityParser:
             steps = data.get("samples", {}).get("steps", [])
 
             activity_entry = {
+                "username": self.username,
                 "date": date,
                 "start": summary.get("startTime"),
                 "end": summary.get("endTime"),
@@ -62,7 +76,10 @@ class ActivityParser:
             # Time series step data (many per day)
             if steps:
                 step_df = pd.DataFrame(steps)
+                step_df["username"] = self.username
                 step_df["date"] = date  # associate samples with their day
+                # reorder
+                step_df = step_df[["username", "date"] + [col for col in step_df.columns if col not in ["username", "date"]]]
                 self.step_series_df = pd.concat([self.step_series_df, step_df], ignore_index=True)
 
         except Exception as e:
@@ -81,7 +98,15 @@ class ActivityParser:
                 day_hr_df = pd.DataFrame(samples)
                 day_hr_df["userId"] = user_id
                 day_hr_df["date"] = date
+                day_hr_df["username"] = self.username
+                # Convert seconds from day start to time of day
+                day_hr_df["timeOfDay"] = day_hr_df["secondsFromDayStart"].apply(
+                    lambda x: (datetime.min + pd.to_timedelta(x, unit='s')).time()
+                )
 
+                # reorder columns
+                day_hr_df = day_hr_df[["username", "date", "timeOfDay", "heartRate"] + [col for col in day_hr_df.columns if col not in ["username", "date", "timeOfDay", "heartRate"]]]
+                # append to the main dataframe
                 self.hr_247_df = pd.concat([self.hr_247_df, day_hr_df], ignore_index=True)
 
         except Exception as e:

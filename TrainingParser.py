@@ -74,11 +74,6 @@ class TrainingParser:
         folder_path = Path(matching_folders[0])  # Use the first matching folder, should be updated to handle multiple folders!!!
         return [f for f in folder_path.glob("training-session*.json")]
 
-    # def read_exercises(self, file_path: Path) -> dict:
-    #     """Reads a JSON file and returns its content."""
-    #     with open(file_path, "r") as f:
-    #         data = json.load(f)
-    #     return data.get("exercises", {})
 
     def parse_exercise_summary(self, exercises: list, username:str):
         """Parses exercise summary and appends to the DataFrame."""
@@ -98,6 +93,7 @@ class TrainingParser:
                     "hr_avg": ex.get("heartRate", {}).get("avg"),
                     "hr_min": ex.get("heartRate", {}).get("min"),
                     "hr_max": ex.get("heartRate", {}).get("max"),
+                    "sport": ex.get("sport", "")
                 })
             except (KeyError, ValueError, TypeError) as e:
                 print(f"Skipping invalid exercise entry: {e}")
@@ -109,6 +105,7 @@ class TrainingParser:
         """Parses heart rate samples and returns a DataFrame."""
         hr_samples = []
         for ex in exercises:
+        
             try:
                 for sample in ex.get("samples", {}).get("heartRate", []):
                     sample_time = datetime.fromisoformat(sample["dateTime"]) + timedelta(minutes=ex.get("timezoneOffset", 0))
@@ -116,20 +113,9 @@ class TrainingParser:
             except (KeyError) as e:
                 print(f"Missing heart rate value for timepoint {sample['dateTime']}")
         hr_df = pd.DataFrame(hr_samples)
+
         if not hr_df.empty:
             self.training_hr_samples.append(hr_df)
             self.training_hr_df = pd.concat([self.training_hr_df, hr_df], ignore_index=True)
 
-        # return pd.DataFrame(hr_samples)
-
-    # def process_all_files(self):
-    #     """Processes all training session files and updates DataFrames."""
-    #     for file in self.training_JSON_files:
-    #         exercises = self.read_exercises(file)
-
-    #         self.parse_exercise_summary(exercises)
-
-    #         hr_df = self.parse_hr_samples(exercises)
-    #         if not hr_df.empty:
-    #             self.training_hr_samples.append(hr_df)  # Append each file's heart rate data separately
 

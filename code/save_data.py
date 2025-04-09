@@ -1,7 +1,7 @@
 import os
 
 
-def save_data_files(folder_name: str, data_dict: dict, output_dir: str, save_format: str = "excel"):
+def save_data_files(folder_name: str, data_dict: dict, output_dir: str, save_format: str):
     """
     Saves multiple pandas DataFrames to files (Excel, CSV, or both) in the specified folder.
 

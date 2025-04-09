@@ -1,3 +1,4 @@
-pandas
-isodate
-openpyxl
+pandas~=2.2.3
+tqdm~=4.67.1
+isodate~=0.7.2
+openpyxl~=3.1.5

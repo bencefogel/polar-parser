@@ -1,45 +1,29 @@
 import re
 import os
 import pandas as pd
+from tqdm import tqdm
 from TrainingParser import TrainingParser
 from ActivityParser import ActivityParser
 from save_data import save_data_files
 
 # Process json files containing data exported from Polar website
 
+zip_data_directory = '../input'
+output_dir = '../output'
 save_format = 'csv'  # save files in excel, csv, both or None (saving files as .csv is much faster)
-output_dir = 'output'
-verbose = False  # Should we print the dataframes?
-# common pattern in the names of zip files
-folder_pattern = 'polar-user-data-export*'
-folder_of_zip_files = None  # folder where all the zip files are. Folder must be in the same directory as this script.
-                            # If none, script will search the current directory.
-training_parser = TrainingParser(folder_pattern=folder_pattern, folder_of_zip_files=folder_of_zip_files)
+
+training_parser = TrainingParser(folder_of_zip_files=zip_data_directory, zip_file_pattern='polar-user-data-export*')
 training_summary = training_parser.training_summary
 training_hr_df = training_parser.training_hr_df
 
-if verbose:
-    print("Training summary size:")
-    print(training_summary.shape)
-    print("Training summary columns:")
-    print(training_summary.columns)
-    print("Training summary:")
-    print(training_summary)
-    print("Training HR samples size:")
-    print(training_hr_df.shape)
-    print("Training HR samples columns:")
-    print(training_hr_df.columns)
-    print("Training HR samples:")
-    print(training_hr_df)
-
-activity_parser = ActivityParser(folder_pattern=folder_pattern, folder_of_zip_files=folder_of_zip_files)
+activity_parser = ActivityParser(folder_of_zip_files=zip_data_directory, zip_file_pattern='polar-user-data-export*')
 activity_summary = activity_parser.activity_summary
 step_series = activity_parser.step_series_df
 acitivty_hr = activity_parser.hr_247_df
 
 users = activity_summary['username'].unique()
 if save_format is not None:
-    for user in users:
+    for user in tqdm(users):
         # Filter data for the current user
         user_training_summary = training_summary[training_summary['username'] == user]
         user_training_hr_df = training_hr_df[training_hr_df['username'] == user]

@@ -11,11 +11,11 @@ import zipfile
 
 
 class TrainingParser:
-    def __init__(self, folder_of_zip_files:str|None = None, folder_pattern: str = "polar-user-data-export*"):
+    def __init__(self, folder_of_zip_files: str | None = None, zip_file_pattern: str = "polar-user-data-export*"):
         """Initialize the parser and find matching files.
         Args:
             folder_of_zip_files (str|None): Path to the folder containing zip files. If None, it will look in the current directory. Default is None. 
-            folder_pattern (str): Pattern to match folders or zip files.
+            zip_file_pattern (str): Pattern to match folders or zip files.
         """
         if folder_of_zip_files is not None:
             self.directory = Path(folder_of_zip_files)
@@ -26,7 +26,7 @@ class TrainingParser:
         if not self.directory.is_dir():
             raise NotADirectoryError(f"The path '{self.directory}' is not a directory.")
         
-        self.folder_pattern = folder_pattern
+        self.folder_pattern = zip_file_pattern
         self.training_JSON_files = []
         self.training_summary = pd.DataFrame()
         self.training_hr_samples = []
@@ -41,12 +41,12 @@ class TrainingParser:
             print("No matching folders or zip files found at:", self.folder_pattern)
             return []
         for folder in matching_folders:
-            print(f"Found folder: {folder}")
+            # print(f"Found folder: {folder}")
             folder_path = Path(folder)
             with zipfile.ZipFile(folder_path, 'r') as zip_ref:
                 for filemember in zip_ref.namelist():
                     if filemember.startswith('account-data') and filemember.endswith('.json'):
-                        print(f"Found account data JSON file: {filemember}")
+                        # print(f"Found account data JSON file: {filemember}")
                         # load json file
                         with zip_ref.open(filemember) as file:
                             # Read the JSON content, get exercises
@@ -56,7 +56,7 @@ class TrainingParser:
                             break
                 for filemember in zip_ref.namelist():
                     if filemember.startswith("training-session") and filemember.endswith(".json"):
-                        print(f"Found training session JSON file: {filemember}")
+                        # print(f"Found training session JSON file: {filemember}")
                         # append name to list
                         self.training_JSON_files.append(filemember)
                         # load json file

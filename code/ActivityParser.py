@@ -8,7 +8,7 @@ import zipfile
 
 
 class ActivityParser:
-    def __init__(self, folder_of_zip_files: str | None = None, folder_pattern: str = "polar-user-data-export*"):
+    def __init__(self, folder_of_zip_files: str | None = None, zip_file_pattern: str = "polar-user-data-export*"):
         """Initialize the parser and process activity & 24/7 HR data."""
         self.directory = Path(folder_of_zip_files) if folder_of_zip_files else Path.cwd()
         if not self.directory.exists():
@@ -16,7 +16,7 @@ class ActivityParser:
         if not self.directory.is_dir():
             raise NotADirectoryError(f"The path '{self.directory}' is not a directory.")
 
-        self.folder_pattern = folder_pattern
+        self.folder_pattern = zip_file_pattern
         self.activity_summary = pd.DataFrame()
         self.step_series_df = pd.DataFrame()
         self.hr_247_df = pd.DataFrame()
@@ -43,13 +43,13 @@ class ActivityParser:
                             break
                 for filemember in zip_ref.namelist():
                     if filemember.startswith("activity-") and filemember.endswith(".json"):
-                        print(f"Found activity JSON file: {filemember}")
+                        # print(f"Found activity JSON file: {filemember}")
                         # load json file
                         with zip_ref.open(filemember) as file:
                             data = json.load(file)
                             self.parse_activity_file(data)
                     elif filemember.startswith("247ohr_") and filemember.endswith(".json"):
-                        print(f"Found 24/7 HR JSON file: {filemember}")
+                        # print(f"Found 24/7 HR JSON file: {filemember}")
                         # load json file
                         with zip_ref.open(filemember) as file:
                             data = json.load(file)

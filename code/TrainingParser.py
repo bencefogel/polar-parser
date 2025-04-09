@@ -11,7 +11,7 @@ import zipfile
 
 
 class TrainingParser:
-    def __init__(self, folder_of_zip_files: str | None = None, zip_file_pattern: str = "polar-user-data-export*"):
+    def __init__(self, folder_of_zip_files: str | None = None, zip_file_pattern: str = "polar-user-data-export*", start_date: str = None, end_date: str = None):
         """Initialize the parser and find matching files.
         Args:
             folder_of_zip_files (str|None): Path to the folder containing zip files. If None, it will look in the current directory. Default is None. 
@@ -31,6 +31,8 @@ class TrainingParser:
         self.training_summary = pd.DataFrame()
         self.training_hr_samples = []
         self.training_hr_df = pd.DataFrame()
+        self.start_date = datetime.strptime(start_date, "%Y-%m-%d") if start_date else None
+        self.end_date = datetime.strptime(end_date, "%Y-%m-%d") if end_date else None
         self.process_all_files()
 
 
@@ -83,6 +85,12 @@ class TrainingParser:
                 start = datetime.fromisoformat(ex["startTime"]) + timedelta(minutes=ex.get("timezoneOffset", 0))
                 stop = datetime.fromisoformat(ex["stopTime"]) + timedelta(minutes=ex.get("timezoneOffset", 0))
                 duration = isodate.parse_duration(ex.get("duration", "PT0S")).total_seconds()
+                
+                # Check if the exercise is within the specified date range
+                if self.start_date and start < self.start_date:
+                    continue
+                if self.end_date and stop > self.end_date:
+                    continue
 
                 exercise_list.append({
                     "username": username,
@@ -109,6 +117,11 @@ class TrainingParser:
             try:
                 for sample in ex.get("samples", {}).get("heartRate", []):
                     sample_time = datetime.fromisoformat(sample["dateTime"]) + timedelta(minutes=ex.get("timezoneOffset", 0))
+                    # Check if the sample is within the specified date range
+                    if self.start_date and sample_time < self.start_date:
+                        continue
+                    if self.end_date and sample_time > self.end_date:
+                        continue
                     hr_samples.append({"username": username, "dateTime": sample_time, "heartRate": sample["value"]})
             except (KeyError) as e:
                 print(f"Missing heart rate value for timepoint {sample['dateTime']}")

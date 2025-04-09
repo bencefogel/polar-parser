@@ -8,7 +8,7 @@ import zipfile
 
 
 class ActivityParser:
-    def __init__(self, folder_of_zip_files: str | None = None, zip_file_pattern: str = "polar-user-data-export*"):
+    def __init__(self, folder_of_zip_files: str | None = None, zip_file_pattern: str = "polar-user-data-export*", start_date: str = None, end_date: str = None):
         """Initialize the parser and process activity & 24/7 HR data."""
         self.directory = Path(folder_of_zip_files) if folder_of_zip_files else Path.cwd()
         if not self.directory.exists():
@@ -21,7 +21,8 @@ class ActivityParser:
         self.step_series_df = pd.DataFrame()
         self.hr_247_df = pd.DataFrame()
         self.username = None
-
+        self.start_date = datetime.strptime(start_date, "%Y-%m-%d") if start_date else None
+        self.end_date = datetime.strptime(end_date, "%Y-%m-%d") if end_date else None
         self.process_all_files()
 
     def process_all_files(self):
@@ -62,6 +63,15 @@ class ActivityParser:
             summary = data.get("summary", {})
             steps = data.get("samples", {}).get("steps", [])
 
+            # Filter by date if start_date and end_date are provided
+            if self.start_date or self.end_date:
+                date_obj = datetime.strptime(date, "%Y-%m-%d")
+                if self.start_date and date_obj < self.start_date:
+                    # each activity file contains only one day of data, so we skip the whole file if the date is out of range
+                    return
+                if self.end_date and date_obj > self.end_date:
+                    return
+
             activity_entry = {
                 "username": self.username,
                 "date": date,
@@ -78,6 +88,7 @@ class ActivityParser:
                 step_df = pd.DataFrame(steps)
                 step_df["username"] = self.username
                 step_df["date"] = date  # associate samples with their day
+                # date has been filtered at this point, so we can use it directly
                 # reorder
                 step_df = step_df[["username", "date"] + [col for col in step_df.columns if col not in ["username", "date"]]]
                 self.step_series_df = pd.concat([self.step_series_df, step_df], ignore_index=True)
@@ -91,7 +102,15 @@ class ActivityParser:
             for day in data.get("deviceDays", []):
                 user_id = day.get("userId")
                 date = day.get("date")
+                # Filter by date if start_date and end_date are provided
+                if self.start_date or self.end_date:
+                    date_obj = datetime.strptime(date, "%Y-%m-%d")
+                    if self.start_date and date_obj < self.start_date:
+                        continue
+                    if self.end_date and date_obj > self.end_date:
+                        continue
                 samples = day.get("samples", [])
+                # Filter out empty samples
                 if not samples:
                     continue
 

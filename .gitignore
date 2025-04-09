@@ -3,3 +3,9 @@
 
 # Ignore all Excel files
 *.xlsx
+
+# Ignore all CSV files
+*.csv
+
+# Ignore all text files
+*.txt
